@@ -26,14 +26,6 @@
       background-color: rgba(255, 0, 0, 0.2);
       transition: background-color 0.5s ease;
     }
-    .price-text-up {
-      color: #0f0 !important;
-      transition: color 0.5s ease;
-    }
-    .price-text-down {
-      color: #f66 !important;
-      transition: color 0.5s ease;
-    }
     .percent-up {
       color: #0f0 !important;
     }
@@ -93,7 +85,8 @@
 
   <script>
     let currentCurrency = 'usd';
-    const chartsMap = {}; // Track Chart.js instances
+    const chartsMap = {};
+    const priceCache = {};
 
     const currencySymbols = {
       usd: '$',
@@ -132,7 +125,9 @@
             <td><img class="coin-logo" src="${coin.image}" alt="${coin.name} logo"/></td>
             <td>${coin.name}</td>
             <td>${coin.symbol.toUpperCase()}</td>
-            <td>${currencySymbols[currentCurrency]}${formatPrice(current)}</td>
+            <td id="price-${coin.id}" data-coin-id="${coin.id}" class="price-cell">
+              ${currencySymbols[currentCurrency]}${formatPrice(current)}
+            </td>
             <td class="${parseFloat(change1h) > 0 ? 'percent-up' : parseFloat(change1h) < 0 ? 'percent-down' : ''}">${change1h}%</td>
             <td class="${parseFloat(change24h) > 0 ? 'percent-up' : parseFloat(change24h) < 0 ? 'percent-down' : ''}">${change24h}%</td>
             <td>${currencySymbols[currentCurrency]}${coin.market_cap.toLocaleString()}</td>
@@ -141,15 +136,26 @@
 
           tableBody.appendChild(row);
 
+          // Flash price if changed
+          const priceCell = document.getElementById(`price-${coin.id}`);
+          const prevPrice = priceCache[coin.id];
+          priceCache[coin.id] = current;
+
+          if (prevPrice !== undefined && prevPrice !== current) {
+            const priceUp = current > prevPrice;
+            priceCell.classList.add(priceUp ? 'price-up' : 'price-down');
+            setTimeout(() => {
+              priceCell.classList.remove('price-up', 'price-down');
+            }, 2500);
+          }
+
           const chartId = `chart-${coin.id}`;
           const chartCanvas = document.getElementById(chartId);
 
-          // Destroy old chart if it exists
           if (chartsMap[chartId]) {
             chartsMap[chartId].destroy();
           }
 
-          // Create and store new chart
           chartsMap[chartId] = new Chart(chartCanvas, {
             type: 'line',
             data: {
@@ -184,12 +190,11 @@
       document.getElementById('currency-symbol').textContent = currencySymbols[currentCurrency];
       document.getElementById('currency-symbol-mc').textContent = currencySymbols[currentCurrency];
 
-      // Prevent spamming the dropdown
       e.target.disabled = true;
       fetchCryptos().finally(() => {
         setTimeout(() => {
           e.target.disabled = false;
-        }, 1000); // 1 second cooldown
+        }, 1000);
       });
     });
 
@@ -200,11 +205,7 @@
       rows.forEach(row => {
         const name = row.children[2]?.textContent.toLowerCase();
         const symbol = row.children[3]?.textContent.toLowerCase();
-        if (name.includes(query) || symbol.includes(query)) {
-          row.style.display = '';
-        } else {
-          row.style.display = 'none';
-        }
+        row.style.display = name.includes(query) || symbol.includes(query) ? '' : 'none';
       });
     });
 
