@@ -36,16 +36,25 @@
       width: 100px !important;
       height: 30px !important;
     }
+    #countdown-timer {
+      font-weight: 600;
+      font-size: 1.2rem;
+      color: #ffc107;
+      margin-top: 10px;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
   <div class="container py-5">
-    <h1 class="text-center mb-4">
+    <h1 class="text-center mb-2">
       Top 100 Cryptocurrencies
       <div class="mt-2">
         <span class="fw-bold fs-5 text-warning">(Auto-refresh every 30s)</span>
       </div>
     </h1>
+
+    <div id="countdown-timer">Next update in: 30s</div>
 
     <div class="d-flex flex-wrap justify-content-center gap-3 mb-4">
       <div class="d-flex align-items-center">
@@ -87,6 +96,8 @@
     let currentCurrency = 'usd';
     const chartsMap = {};
     const priceCache = {};
+    let countdown = 30;  // seconds
+    let countdownInterval;
 
     const currencySymbols = {
       usd: '$',
@@ -202,9 +213,24 @@
             }
           });
         });
+
+        // Reset countdown after successful fetch
+        countdown = 30;
+        document.getElementById('countdown-timer').textContent = `Next update in: ${countdown}s`;
       } catch (err) {
         console.error("Fetch error:", err);
       }
+    }
+
+    function startCountdown() {
+      countdownInterval = setInterval(() => {
+        countdown--;
+        if (countdown <= 0) {
+          fetchCryptos();
+        } else {
+          document.getElementById('countdown-timer').textContent = `Next update in: ${countdown}s`;
+        }
+      }, 1000);
     }
 
     document.getElementById('currency-select').addEventListener('change', (e) => {
@@ -231,8 +257,9 @@
       });
     });
 
+    // Initial fetch and start countdown timer
     fetchCryptos();
-    setInterval(fetchCryptos, 30000);
+    startCountdown();
   </script>
 </body>
 </html>
