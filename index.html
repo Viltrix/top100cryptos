@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Top 100 Cryptocurrencies</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body {
+      background-color: #121212;
+      color: #fff;
+    }
+    .table th, .table td {
+      vertical-align: middle;
+    }
+    img.coin-logo {
+      width: 24px;
+      height: 24px;
+    }
+    .price-up {
+      background-color: rgba(0, 255, 0, 0.2);
+      transition: background-color 0.5s ease;
+    }
+    .price-down {
+      background-color: rgba(255, 0, 0, 0.2);
+      transition: background-color 0.5s ease;
+    }
+    .percent-up {
+      color: #0f0;
+    }
+    .percent-down {
+      color: #f66;
+    }
+  </style>
+</head>
+<body>
+  <div class="container py-5">
+    <h1 class="text-center mb-4">
+      Top 100 Cryptocurrencies
+      <small class="text-muted fs-6">(Auto-refresh every 3s)</small>
+    </h1>
+    <div class="table-responsive">
+      <table class="table table-dark table-striped table-hover">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Logo</th>
+            <th>Name</th>
+            <th>Symbol</th>
+            <th>Price (USD)</th>
+            <th>24h Change %</th>
+            <th>Market Cap</th>
+          </tr>
+        </thead>
+        <tbody id="crypto-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const rowMap = {};
+
+    async function fetchCryptos() {
+      try {
+        const response = await fetch(
+          'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false'
+        );
+        const data = await response.json();
+        const tableBody = document.getElementById('crypto-table-body');
+
+        data.forEach((coin) => {
+          const current = coin.current_price;
+          const changePercent = coin.price_change_percentage_24h?.toFixed(2) || "0.00";
+
+          let row = rowMap[coin.id];
+          if (!row) {
+            row = document.createElement("tr");
+            row.innerHTML = `
+              <td>${coin.market_cap_rank}</td>
+              <td><img class="coin-logo" src="${coin.image}" alt="${coin.name} logo"/></td>
+              <td>${coin.name}</td>
+              <td>${coin.symbol.toUpperCase()}</td>
+              <td>$0</td>
+              <td>0%</td>
+              <td>$0</td>
+            `;
+            rowMap[coin.id] = row;
+            tableBody.appendChild(row);
+          }
+
+          const priceCell = row.children[4];
+          const percentCell = row.children[5];
+          const marketCapCell = row.children[6];
+
+          const prevPrice = parseFloat(priceCell.textContent.replace(/[$,]/g, ''));
+
+          // Update price first
+          priceCell.textContent = `$${current.toLocaleString()}`;
+
+          // Debug log to verify updates
+          console.log(`${coin.name}: prev=${prevPrice}, current=${current}`);
+
+          // Highlight price changes
+          if (!isNaN(prevPrice)) {
+            if (current > prevPrice) {
+              priceCell.classList.add("price-up");
+              setTimeout(() => priceCell.classList.remove("price-up"), 1000);
+            } else if (current < prevPrice) {
+              priceCell.classList.add("price-down");
+              setTimeout(() => priceCell.classList.remove("price-down"), 1000);
+            }
+          }
+
+          // Update 24h % change
+          percentCell.textContent = `${changePercent}%`;
+          percentCell.className = changePercent > 0 ? "percent-up" : changePercent < 0 ? "percent-down" : "";
+
+          // Update market cap
+          marketCapCell.textContent = `$${coin.market_cap.toLocaleString()}`;
+        });
+      } catch (err) {
+        console.error("Fetch error:", err);
+      }
+    }
+
+    fetchCryptos();
+    setInterval(fetchCryptos, 3000);
+  </script>
+</body>
+</html>
