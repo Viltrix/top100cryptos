@@ -111,7 +111,6 @@
         );
         const data = await response.json();
         const tableBody = document.getElementById('crypto-table-body');
-        tableBody.innerHTML = '';
 
         data.forEach((coin) => {
           const current = coin.current_price;
@@ -119,28 +118,37 @@
           const change24h = coin.price_change_percentage_24h?.toFixed(2) || "0.00";
           const sparkline = coin.sparkline_in_7d?.price || [];
 
-          const row = document.createElement("tr");
-          row.innerHTML = `
-            <td>${coin.market_cap_rank}</td>
-            <td><img class="coin-logo" src="${coin.image}" alt="${coin.name} logo"/></td>
-            <td>${coin.name}</td>
-            <td>${coin.symbol.toUpperCase()}</td>
-            <td id="price-${coin.id}" data-coin-id="${coin.id}" class="price-cell">
-              ${currencySymbols[currentCurrency]}${formatPrice(current)}
-            </td>
-            <td class="${parseFloat(change1h) > 0 ? 'percent-up' : parseFloat(change1h) < 0 ? 'percent-down' : ''}">${change1h}%</td>
-            <td class="${parseFloat(change24h) > 0 ? 'percent-up' : parseFloat(change24h) < 0 ? 'percent-down' : ''}">${change24h}%</td>
-            <td>${currencySymbols[currentCurrency]}${coin.market_cap.toLocaleString()}</td>
-            <td><canvas class="sparkline" id="chart-${coin.id}"></canvas></td>
-          `;
+          let row = document.getElementById(`row-${coin.id}`);
 
-          tableBody.appendChild(row);
+          if (!row) {
+            // create row if not exists
+            row = document.createElement("tr");
+            row.id = `row-${coin.id}`;
+            row.innerHTML = `
+              <td>${coin.market_cap_rank}</td>
+              <td><img class="coin-logo" src="${coin.image}" alt="${coin.name} logo"/></td>
+              <td>${coin.name}</td>
+              <td>${coin.symbol.toUpperCase()}</td>
+              <td id="price-${coin.id}" data-coin-id="${coin.id}" class="price-cell"></td>
+              <td id="change1h-${coin.id}"></td>
+              <td id="change24h-${coin.id}"></td>
+              <td id="marketcap-${coin.id}"></td>
+              <td><canvas class="sparkline" id="chart-${coin.id}"></canvas></td>
+            `;
+            tableBody.appendChild(row);
+          }
 
-          // Flash price if changed
+          // Update rank (in case it changed)
+          row.children[0].textContent = coin.market_cap_rank;
+
+          // Update price
           const priceCell = document.getElementById(`price-${coin.id}`);
           const prevPrice = priceCache[coin.id];
           priceCache[coin.id] = current;
 
+          priceCell.textContent = `${currencySymbols[currentCurrency]}${formatPrice(current)}`;
+
+          // Flash if price changed
           if (prevPrice !== undefined && prevPrice !== current) {
             const priceUp = current > prevPrice;
             priceCell.classList.add(priceUp ? 'price-up' : 'price-down');
@@ -149,6 +157,20 @@
             }, 2500);
           }
 
+          // Update % changes with coloring
+          const change1hCell = document.getElementById(`change1h-${coin.id}`);
+          change1hCell.textContent = `${change1h}%`;
+          change1hCell.className = parseFloat(change1h) > 0 ? 'percent-up' : parseFloat(change1h) < 0 ? 'percent-down' : '';
+
+          const change24hCell = document.getElementById(`change24h-${coin.id}`);
+          change24hCell.textContent = `${change24h}%`;
+          change24hCell.className = parseFloat(change24h) > 0 ? 'percent-up' : parseFloat(change24h) < 0 ? 'percent-down' : '';
+
+          // Update market cap
+          const marketCapCell = document.getElementById(`marketcap-${coin.id}`);
+          marketCapCell.textContent = `${currencySymbols[currentCurrency]}${coin.market_cap.toLocaleString()}`;
+
+          // Update sparkline chart
           const chartId = `chart-${coin.id}`;
           const chartCanvas = document.getElementById(chartId);
 
