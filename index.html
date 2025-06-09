@@ -3,92 +3,129 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Top 100 Cryptocurrencies</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <title>Crypto Tracker</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
-      background-color: #121212;
-      color: #fff;
+      font-family: Arial, sans-serif;
+      background-color: #0d1117;
+      color: #c9d1d9;
+      margin: 0;
+      padding: 0;
     }
-    .table th, .table td {
-      vertical-align: middle;
+    header {
+      background-color: #161b22;
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #30363d;
     }
-    img.coin-logo {
-      width: 24px;
-      height: 24px;
+    h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      color: #58a6ff;
+    }
+    main {
+      padding: 1rem;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    select, input {
+      padding: 0.5rem;
+      font-size: 1rem;
+      background-color: #21262d;
+      color: #c9d1d9;
+      border: 1px solid #30363d;
+      border-radius: 5px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    th, td {
+      padding: 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid #30363d;
+    }
+    th {
+      background-color: #161b22;
+      color: #8b949e;
     }
     .price-up {
-      background-color: rgba(0, 255, 0, 0.2);
-      transition: background-color 0.5s ease;
+      color: #00ff00;
     }
     .price-down {
-      background-color: rgba(255, 0, 0, 0.2);
-      transition: background-color 0.5s ease;
+      color: #ff5555;
     }
     .percent-up {
-      color: #0f0 !important;
+      color: #00ff00;
     }
     .percent-down {
-      color: #f66 !important;
+      color: #ff5555;
+    }
+    .coin-logo {
+      width: 24px;
+      height: 24px;
+      vertical-align: middle;
     }
     .sparkline {
-      width: 100px !important;
-      height: 30px !important;
+      width: 100px;
+      height: 30px;
     }
   </style>
 </head>
 <body>
-  <div class="container py-5">
-    <h1 class="text-center mb-4">
-      Top 100 Cryptocurrencies
-      <div class="mt-2">
-        <span class="fw-bold fs-5 text-warning">(Auto-refresh every 30s)</span>
-      </div>
-      <div id="update-counter" class="text-center mt-1 text-info">30s</div>
-    </h1>
+  <header>
+    <h1>Crypto Market Tracker</h1>
+    <div>Updating in: <span id="update-counter">30s</span></div>
+  </header>
 
-    <div class="d-flex flex-wrap justify-content-center gap-3 mb-4">
-      <div class="d-flex align-items-center">
-        <label for="currency-select" class="form-label me-2 fs-5">Currency:</label>
-        <select id="currency-select" class="form-select w-auto">
-          <option value="usd" selected>USD ($)</option>
-          <option value="eur">EUR (€)</option>
-          <option value="gbp">GBP (£)</option>
-          <option value="jpy">JPY (¥)</option>
-          <option value="aud">AUD (A$)</option>
-          <option value="cad">CAD (C$)</option>
-          <option value="chf">CHF (CHF)</option>
+  <main>
+    <div class="controls">
+      <label>
+        Currency:
+        <select id="currency-select">
+          <option value="usd" selected>USD</option>
+          <option value="eur">EUR</option>
+          <option value="gbp">GBP</option>
+          <option value="jpy">JPY</option>
+          <option value="aud">AUD</option>
+          <option value="cad">CAD</option>
+          <option value="chf">CHF</option>
         </select>
-      </div>
-      <input id="search-input" type="text" class="form-control w-50" placeholder="Search by name or symbol...">
+      </label>
+      <input type="text" id="search-input" placeholder="Search by name or symbol..." />
     </div>
 
-    <div class="table-responsive">
-      <table class="table table-dark table-striped table-hover">
-        <thead>
-          <tr>
-            <th>Rank</th>
-            <th>Logo</th>
-            <th>Name</th>
-            <th>Symbol</th>
-            <th>Price (<span id="currency-symbol">$</span>)</th>
-            <th>1h Change %</th>
-            <th>24h Change %</th>
-            <th>Market Cap (<span id="currency-symbol-mc">$</span>)</th>
-            <th>7d Chart</th>
-          </tr>
-        </thead>
-        <tbody id="crypto-table-body"></tbody>
-      </table>
-    </div>
-  </div>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th></th>
+          <th>Name</th>
+          <th>Symbol</th>
+          <th>Price (<span id="currency-symbol">$</span>)</th>
+          <th>1h %</th>
+          <th>24h %</th>
+          <th>Market Cap (<span id="currency-symbol-mc">$</span>)</th>
+          <th>7d Chart</th>
+        </tr>
+      </thead>
+      <tbody id="crypto-table-body"></tbody>
+    </table>
+  </main>
 
   <script>
     let currentCurrency = 'usd';
     const chartsMap = {};
     const priceCache = {};
-    let countdown = 30;
+    let lastServerUpdate = null;
 
     const currencySymbols = {
       usd: '$', eur: '€', gbp: '£', jpy: '¥',
@@ -101,9 +138,21 @@
       return price.toExponential(2);
     }
 
+    function updateCountdownDisplay() {
+      const now = new Date();
+      if (!lastServerUpdate) return;
+      const nextUpdate = new Date(lastServerUpdate.getTime() + 30000);
+      const secondsRemaining = Math.max(0, Math.ceil((nextUpdate - now) / 1000));
+      document.getElementById('update-counter').textContent = `${secondsRemaining}s`;
+    }
+
+    setInterval(updateCountdownDisplay, 1000);
+
     async function buildTable() {
       const res = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=${currentCurrency}&order=market_cap_desc&per_page=100&page=1&sparkline=true&price_change_percentage=1h%2C24h`);
       const data = await res.json();
+      lastServerUpdate = new Date(data[0].last_updated);
+
       const tbody = document.getElementById("crypto-table-body");
       tbody.innerHTML = '';
 
@@ -152,13 +201,12 @@
           }
         });
       });
-
-      resetCountdown();
     }
 
     async function updateData() {
       const res = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=${currentCurrency}&order=market_cap_desc&per_page=100&page=1&sparkline=true&price_change_percentage=1h%2C24h`);
       const data = await res.json();
+      lastServerUpdate = new Date(data[0].last_updated);
 
       data.forEach(coin => {
         const priceCell = document.getElementById(`price-${coin.id}`);
@@ -205,21 +253,6 @@
           chart.update();
         }
       });
-
-      resetCountdown();
-    }
-
-    function resetCountdown() {
-      countdown = 30;
-      document.getElementById('update-counter').textContent = `${countdown}s`;
-    }
-
-    function startCountdown() {
-      setInterval(() => {
-        countdown--;
-        if (countdown < 0) countdown = 0;
-        document.getElementById('update-counter').textContent = `${countdown}s`;
-      }, 1000);
     }
 
     document.getElementById('currency-select').addEventListener('change', async (e) => {
@@ -245,7 +278,6 @@
 
     window.onload = async () => {
       await buildTable();
-      startCountdown();
       setInterval(updateData, 30000);
     };
   </script>
