@@ -43,9 +43,9 @@
     <h1 class="text-center mb-4">
       Top 100 Cryptocurrencies
       <div class="mt-2">
-        <span class="fw-bold fs-5 text-warning">(Auto-refresh every 60s)</span>
+        <span class="fw-bold fs-5 text-warning">(Auto-refresh every 70s)</span>
       </div>
-      <div id="update-counter" class="text-center mt-1 text-info">60s</div>
+      <div id="update-counter" class="text-center mt-1 text-info">70s</div>
     </h1>
 
     <div class="d-flex flex-wrap justify-content-center gap-3 mb-4">
@@ -88,7 +88,7 @@
     let currentCurrency = 'usd';
     const chartsMap = {};
     const priceCache = {};
-    let countdown = 60;
+    let countdown = 70;
     let countdownInterval;
 
     const currencySymbols = {
@@ -240,7 +240,7 @@
     }
 
     function resetCountdown() {
-      countdown = 60;
+      countdown = 70;
       document.getElementById('update-counter').textContent = `${countdown}s`;
     }
 
@@ -279,7 +279,7 @@
       setInterval(async () => {
         await updateData();
         resetCountdown();
-      }, 60000);
+      }, 70000);
     };
   </script>
 </body>
