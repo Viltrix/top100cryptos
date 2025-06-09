@@ -88,7 +88,7 @@
     let currentCurrency = 'usd';
     const chartsMap = {};
     const priceCache = {};
-    let countdownInterval;
+    let countdown = 30;
 
     const currencySymbols = {
       usd: '$', eur: '€', gbp: '£', jpy: '¥',
@@ -104,10 +104,10 @@
     async function buildTable() {
       const res = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=${currentCurrency}&order=market_cap_desc&per_page=100&page=1&sparkline=true&price_change_percentage=1h%2C24h`);
       const data = await res.json();
-      const tbody = document.getElementById('crypto-table-body');
+      const tbody = document.getElementById("crypto-table-body");
       tbody.innerHTML = '';
 
-      data.forEach((coin) => {
+      data.forEach(coin => {
         const current = coin.current_price;
         const change1h = coin.price_change_percentage_1h_in_currency?.toFixed(2) || "0.00";
         const change24h = coin.price_change_percentage_24h?.toFixed(2) || "0.00";
@@ -152,6 +152,8 @@
           }
         });
       });
+
+      resetCountdown();
     }
 
     async function updateData() {
@@ -166,8 +168,10 @@
         const prevPrice = priceCache[coin.id];
         priceCache[coin.id] = current;
 
-        priceCell.textContent = `${currencySymbols[currentCurrency]}${formatPrice(current)}`;
-        if (prevPrice !== undefined && prevPrice !== current) {
+        const newPriceText = `${currencySymbols[currentCurrency]}${formatPrice(current)}`;
+        const priceChanged = prevPrice !== undefined && current !== prevPrice;
+
+        if (priceChanged) {
           const up = current > prevPrice;
           priceCell.classList.add(up ? 'price-up' : 'price-down');
           priceCell.style.color = up ? '#0f0' : '#f66';
@@ -177,13 +181,15 @@
           }, 2000);
         }
 
+        priceCell.textContent = newPriceText;
+
         const row = priceCell.closest('tr');
+        const change1h = coin.price_change_percentage_1h_in_currency?.toFixed(2) || "0.00";
+        const change24h = coin.price_change_percentage_24h?.toFixed(2) || "0.00";
+
         const change1hCell = row.children[5];
         const change24hCell = row.children[6];
         const marketCapCell = row.children[7];
-
-        const change1h = coin.price_change_percentage_1h_in_currency?.toFixed(2) || "0.00";
-        const change24h = coin.price_change_percentage_24h?.toFixed(2) || "0.00";
 
         change1hCell.textContent = `${change1h}%`;
         change1hCell.className = parseFloat(change1h) > 0 ? 'percent-up' : parseFloat(change1h) < 0 ? 'percent-down' : '';
@@ -194,39 +200,26 @@
         marketCapCell.textContent = `${currencySymbols[currentCurrency]}${coin.market_cap.toLocaleString()}`;
 
         const chart = chartsMap[`chart-${coin.id}`];
-        if (chart) {
+        if (chart && coin.sparkline_in_7d?.price) {
           chart.data.datasets[0].data = coin.sparkline_in_7d.price;
           chart.update();
         }
       });
+
+      resetCountdown();
     }
 
-    async function getServerTime() {
-      const res = await fetch("https://api.coingecko.com/api/v3/ping");
-      const date = new Date(res.headers.get("Date"));
-      return date.getTime();
+    function resetCountdown() {
+      countdown = 30;
+      document.getElementById('update-counter').textContent = `${countdown}s`;
     }
 
-    function startCountdownTo(time) {
-      clearInterval(countdownInterval);
-      countdownInterval = setInterval(() => {
-        const now = Date.now();
-        const secondsLeft = Math.max(0, Math.ceil((time - now) / 1000));
-        document.getElementById('update-counter').textContent = `${secondsLeft}s`;
+    function startCountdown() {
+      setInterval(() => {
+        countdown--;
+        if (countdown < 0) countdown = 0;
+        document.getElementById('update-counter').textContent = `${countdown}s`;
       }, 1000);
-    }
-
-    async function syncAndRepeat() {
-      const serverNow = await getServerTime();
-      const msUntilNext = 30000 - (serverNow % 30000);
-      const nextUpdate = serverNow + msUntilNext;
-
-      startCountdownTo(nextUpdate);
-
-      setTimeout(async () => {
-        await updateData();
-        syncAndRepeat(); // resync after each update
-      }, msUntilNext);
     }
 
     document.getElementById('currency-select').addEventListener('change', async (e) => {
@@ -241,16 +234,19 @@
 
     document.getElementById('search-input').addEventListener('input', function () {
       const query = this.value.toLowerCase();
-      document.querySelectorAll('#crypto-table-body tr').forEach(row => {
-        const name = row.children[2].textContent.toLowerCase();
-        const symbol = row.children[3].textContent.toLowerCase();
+      const rows = document.querySelectorAll('#crypto-table-body tr');
+
+      rows.forEach(row => {
+        const name = row.children[2]?.textContent.toLowerCase();
+        const symbol = row.children[3]?.textContent.toLowerCase();
         row.style.display = name.includes(query) || symbol.includes(query) ? '' : 'none';
       });
     });
 
     window.onload = async () => {
       await buildTable();
-      await syncAndRepeat();
+      startCountdown();
+      setInterval(updateData, 30000);
     };
   </script>
 </body>
